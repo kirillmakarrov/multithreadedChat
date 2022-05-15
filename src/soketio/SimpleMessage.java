@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 public class SimpleMessage implements Serializable {
+    private long id;
     private String sender;
     private String text;
     private LocalDateTime dateTime;
@@ -11,6 +12,14 @@ public class SimpleMessage implements Serializable {
     public SimpleMessage(String sender, String text) {
         this.sender = sender;
         this.text = text;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
     }
 
     public String getSender() {

@@ -1,6 +1,8 @@
 package soketio;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.Scanner;
 
@@ -9,6 +11,7 @@ public class Client {
     private int port;
     private String ip;
     private Scanner scanner;
+    BufferedReader reader;
 
     public Client(int port, String ip) {
         this.port = port;
@@ -17,34 +20,37 @@ public class Client {
     }
 
     public void start() throws Exception {
-        System.out.println("Введите имя");
-        String name = scanner.nextLine();
+        reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.println("Enter you nickname");
+        String name = reader.readLine();
+        System.out.println("Chat has been started");
         Connection connection = new Connection(getSocket());
 
         Thread sender = new Thread(() -> {
             try {
-                while (true) {
-                    System.out.println("Введите сообщение");
-                    String messageText = scanner.nextLine();
+                while (!Thread.currentThread().isInterrupted()) {
+                    String messageText = reader.readLine();
                     if (messageText.equalsIgnoreCase("exit")) {
                         connection.close();
-                        break;
+                        Thread.currentThread().interrupt();
+                        return;
                     }
                     connection.sendMessage(SimpleMessage.getMessage(name, messageText));
-                    System.out.println(Thread.currentThread().getName());
+                    System.out.println(" ");
                 }
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
         });
         Thread getter = new Thread(() -> {
             try {
-                while (!sender.isInterrupted()) {
+                while (!Thread.currentThread().isInterrupted()) {
                     SimpleMessage fromServer = connection.readMessage();
-                    System.out.println(fromServer + " " + Thread.currentThread().getName());
+                    System.out.println(fromServer);
                 }
             } catch (IOException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
+                Thread.currentThread().interrupt();
+                e.printStackTrace();
             }
         });
         sender.start();

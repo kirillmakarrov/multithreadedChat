@@ -10,56 +10,52 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EchoServer {
 
-
-    private int port;
-    private Connection connection;
-    private ArrayBlockingQueue<SimpleMessage> blockingQueue = new ArrayBlockingQueue<>(10, true);
-    private CopyOnWriteArrayList<Connection> connections = new CopyOnWriteArrayList<>();
-
-
     public EchoServer(int port) {
         this.port = port;
     }
 
-    public Connection getConnection() {
-        return connection;
-    }
-
-    public void setConnection(Connection connection) {
-        this.connection = connection;
-    }
+    private int port;
+    private ArrayBlockingQueue<SimpleMessage> blockingQueue = new ArrayBlockingQueue<>(10);
+    private CopyOnWriteArrayList<Connection> connections = new CopyOnWriteArrayList<>();
 
 
     public void start() throws IOException, ClassNotFoundException {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server started...");
-            new SendToClients().start();
+            SendToClients sendToClients = new SendToClients();
+            sendToClients.start();
             while (true) {
                 Socket socket = serverSocket.accept();
-                connection = new Connection(socket);
-                connections.add(connection);
-                new Clients().start();
+                Clients clients = new Clients(socket);
+                clients.start();
             }
         }
     }
 
     class Clients extends Thread {
+        private Connection connection;
+        private long id;
 
+        public Clients(Socket socket) throws IOException {
+            this.connection = new Connection(socket);
+        }
 
         @Override
         public void run() {
-            SimpleMessage message = null;
-            try {
-                message = connection.readMessage();
-            } catch (IOException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-            blockingQueue.add(message);
-            printMessage(message);
-            try {
-                connection.sendMessage(SimpleMessage.getMessage("server", message.getText()));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            id = Thread.currentThread().getId();
+            connection.setId(id);
+            connections.add(connection);
+            while (!isInterrupted()) {
+                try {
+                    SimpleMessage message = connection.readMessage();
+                    message.setId(id);
+                    printMessage(message);
+                    blockingQueue.add(message);
+                } catch (IOException | ClassNotFoundException e) {
+                    connections.remove(connection);
+                    Thread.currentThread().interrupt();
+                    System.out.println(Thread.currentThread().getName() + " interrupted");
+                }
             }
         }
     }
@@ -68,15 +64,17 @@ public class EchoServer {
         @Override
         public void run() {
             while (!isInterrupted()) {
-                SimpleMessage simpleMessage = null;
+                SimpleMessage message;
                 try {
-                    simpleMessage = blockingQueue.take();
+                    message = blockingQueue.take();
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-                for (Connection connection1 : connections) {
+                for (Connection currentConnection : connections) {
                     try {
-                        connection1.sendMessage(simpleMessage);
+                        if (currentConnection.getId() != message.getId()) {
+                            currentConnection.sendMessage(message);
+                        }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -100,7 +98,6 @@ public class EchoServer {
     }
 
 }
-
 
 
 
