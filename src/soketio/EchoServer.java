@@ -15,7 +15,7 @@ public class EchoServer {
     }
 
     private int port;
-    private ArrayBlockingQueue<SimpleMessage> blockingQueue = new ArrayBlockingQueue<>(10);
+    private ArrayBlockingQueue<SimpleMessage> blockingQueue = new ArrayBlockingQueue<>(10, true);
     private CopyOnWriteArrayList<Connection> connections = new CopyOnWriteArrayList<>();
 
 
@@ -45,7 +45,7 @@ public class EchoServer {
             id = Thread.currentThread().getId();
             connection.setId(id);
             connections.add(connection);
-            while (!isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted()) {
                 try {
                     SimpleMessage message = connection.readMessage();
                     message.setId(id);
@@ -55,14 +55,16 @@ public class EchoServer {
                     connections.remove(connection);
                     Thread.currentThread().interrupt();
                     System.out.println(Thread.currentThread().getName() + " interrupted");
+
                 }
             }
         }
     }
+
     class SendToClients extends Thread {
         @Override
         public void run() {
-            while (!isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted()) {
                 SimpleMessage message;
                 try {
                     message = blockingQueue.take();
@@ -95,7 +97,6 @@ public class EchoServer {
             e.printStackTrace();
         }
     }
-
 }
 
 

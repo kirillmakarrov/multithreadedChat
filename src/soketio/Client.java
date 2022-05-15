@@ -33,12 +33,17 @@ public class Client {
                     if (messageText.equalsIgnoreCase("exit")) {
                         connection.close();
                         Thread.currentThread().interrupt();
-                        return;
+                        break;
                     }
                     connection.sendMessage(SimpleMessage.getMessage(name, messageText));
                     System.out.println(" ");
                 }
             } catch (Exception e) {
+                try {
+                    connection.close();
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
                 e.printStackTrace();
             }
         });
@@ -55,21 +60,14 @@ public class Client {
         });
         sender.start();
         getter.start();
-
-
     }
-
-
     private Socket getSocket() throws IOException {
         Socket socket = new Socket(ip, port);
         return socket;
     }
-
-
     public static void main(String[] args) {
         int port = 8090;
         String ip = "127.0.0.1";
-
         try {
             new Client(port, ip).start();
         } catch (Exception e) {
