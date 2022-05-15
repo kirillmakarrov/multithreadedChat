@@ -59,7 +59,6 @@ public class EchoServer {
             }
         }
     }
-
     class SendToClients extends Thread {
         @Override
         public void run() {
